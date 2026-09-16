@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Generated uploads and temporary files
+uploads
+tmp
+temp
+
+# Test and coverage output
+coverage
+.nyc_output
+
+# Editor and operating-system files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.swp
+*.swo
