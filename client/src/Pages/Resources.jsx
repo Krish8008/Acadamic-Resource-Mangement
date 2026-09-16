@@ -246,7 +246,7 @@ const Resources = () => {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  {document.defaultLink && (
+                  {document.links.length > 0 && (
                     isImageLink(getDefaultLink(document).link) ? (
                       <button
                         className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
