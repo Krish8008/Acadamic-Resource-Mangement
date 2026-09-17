@@ -10,10 +10,13 @@ const documentRoutes = require('./routes/documentRoutes')
 
 const app = express()
 const port = process.env.PORT || 3000
-const allowedOrigin = 'https://acadamic-resource-mangement.onrender.com'
+const allowedOrigins = [
+  'https://acadamic-resource-mangement.onrender.com',
+  'http://localhost:5173',
+]
 
 app.use(cors({
-  origin: allowedOrigin,
+  origin: allowedOrigins,
 }))
 app.use(express.json())
 
