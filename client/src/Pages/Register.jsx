@@ -4,7 +4,7 @@ import TeacherList from '../components/TeacherList'
 import TeacherRegistrationForm from '../components/TeacherRegistrationForm'
 import { toast } from 'sonner'
 import { showError, showPermissionError } from '../utils/notifications'
-import { authenticatedFetch, clearAuthentication } from '../utils/auth'
+import { authenticatedFetch, clearAuthentication, getStoredUser } from '../utils/auth'
 
 const initialForm = { name: '', username: '', password: '', role: '' }
 
@@ -27,7 +27,6 @@ const Register = () => {
 
   const loadTeachers = async () => {
     const response = await authenticatedFetch(`${apiUrl}/api/teachers`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
     })
     const data = await response.json()
     if (response.status === 401) return
@@ -36,9 +35,8 @@ const Register = () => {
   }
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user')
     try {
-      const user = storedUser ? JSON.parse(storedUser) : null
+      const user = getStoredUser()
       if (!user || user.role !== 'HOD') {
         showPermissionError()
         navigate('/', { replace: true })
@@ -72,10 +70,7 @@ const Register = () => {
     try {
       const response = await authenticatedFetch(`${apiUrl}/api/register`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
       const data = await response.json()
@@ -103,7 +98,6 @@ const Register = () => {
     try {
       const response = await authenticatedFetch(`${apiUrl}/api/teachers/${teacher._id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
       })
       const data = await response.json()
       if (response.status === 401) return

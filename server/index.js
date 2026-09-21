@@ -2,6 +2,7 @@ const path = require('path')
 require('dotenv').config({ path: path.join(__dirname, '.env') })
 
 const cors = require('cors')
+const cookieParser = require('cookie-parser')
 const express = require('express')
 const mongoose = require('mongoose')
 const authRoutes = require('./routes/authRoutes')
@@ -17,8 +18,10 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: allowedOrigins,
+  credentials: true,
 }))
 app.use(express.json())
+app.use(cookieParser())
 
 app.get('/', (req, res) => {
   res.json({ message: 'API is running' })

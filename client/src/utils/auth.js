@@ -1,8 +1,26 @@
 import { toast } from 'sonner'
 
 export const clearAuthentication = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+  void fetch(`${apiUrl}/api/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+  document.cookie = 'auth_user=; Max-Age=0; Path=/'
+}
+
+export const getStoredUser = () => {
+  const cookie = document.cookie
+    .split('; ')
+    .find((item) => item.startsWith('auth_user='))
+
+  if (!cookie) return null
+
+  try {
+    return JSON.parse(decodeURIComponent(cookie.slice('auth_user='.length)))
+  } catch {
+    return null
+  }
 }
 
 export const handleAuthenticationFailure = () => {
@@ -16,13 +34,8 @@ export const handleAuthenticationFailure = () => {
 
 export const authenticatedFetch = (url, options = {}) => {
   const headers = new Headers(options.headers)
-  const token = localStorage.getItem('token')
 
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`)
-  }
-
-  return fetch(url, { ...options, headers }).then((response) => {
+  return fetch(url, { ...options, headers, credentials: 'include' }).then((response) => {
     if (response.status === 401) {
       handleAuthenticationFailure()
     }

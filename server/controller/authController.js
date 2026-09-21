@@ -4,6 +4,7 @@ const User = require('../model/user')
 const Subject = require('../model/subject')
 const Document = require('../model/documents')
 const { removeUploadedLinks } = require('../utils/cloudinary')
+const { clearAuthCookies, setAuthCookies } = require('../utils/authCookies')
 
 const createToken = (user) =>
   jwt.sign(
@@ -88,11 +89,15 @@ const login = async (req, res) => {
     return res.status(401).json({ message: 'Invalid username or password' })
   }
 
-  return res.json({
-    message: 'Login successful',
-    user: publicUser(user),
-    token: createToken(user),
-  })
+  const userData = publicUser(user)
+  setAuthCookies(res, createToken(user), userData)
+
+  return res.json({ message: 'Login successful', user: userData })
+}
+
+const logout = (req, res) => {
+  clearAuthCookies(res)
+  return res.json({ message: 'Logged out successfully' })
 }
 
 const listTeachers = async (req, res) => {
@@ -134,4 +139,4 @@ const deleteTeacher = async (req, res) => {
   return res.json({ message: 'Teacher and associated resources deleted successfully' })
 }
 
-module.exports = { register, login, listTeachers, deleteTeacher }
+module.exports = { register, login, logout, listTeachers, deleteTeacher }

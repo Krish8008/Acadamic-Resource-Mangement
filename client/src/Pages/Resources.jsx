@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import AuthActions from '../components/AuthActions'
 import { toast } from 'sonner'
 import { showError, showPermissionError } from '../utils/notifications'
-import { authenticatedFetch } from '../utils/auth'
+import { authenticatedFetch, getStoredUser } from '../utils/auth'
 
 const tabs = [
   { id: 'notes', label: 'Notes', description: 'Study material and chapter notes' },
@@ -14,7 +14,7 @@ const tabs = [
 const Resources = () => {
   const { subjectId } = useParams()
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-  const user = JSON.parse(localStorage.getItem('user') || 'null')
+  const user = getStoredUser()
   const [subject, setSubject] = useState(null)
   const [documents, setDocuments] = useState([])
   const [activeTab, setActiveTab] = useState('notes')
@@ -28,8 +28,10 @@ const Resources = () => {
   const canManage = user?.role === 'HOD' || subject?.owner?.toString() === user?.id
 
   const filePreviews = useMemo(() => files.map((selectedFile) => (
-      selectedFile.type.startsWith('image/') ? URL.createObjectURL(selectedFile) : null
-    )), [files])
+    selectedFile.type.startsWith('image/') || selectedFile.type === 'application/pdf'
+      ? URL.createObjectURL(selectedFile)
+      : null
+  )), [files])
 
   useEffect(() => {
     return () => filePreviews.forEach((preview) => preview && URL.revokeObjectURL(preview))
@@ -72,6 +74,18 @@ const Resources = () => {
     && (link.resourceType === 'image' || /\.(?:png|jpe?g|gif|webp|bmp|svg)(?:$|\?)/i.test(link.url))
   )
 
+  const isPdfLink = (link) => (
+    /\.pdf(?:$|\?)/i.test(`${link.label || ''}${link.url || ''}`)
+  )
+
+  const hasPreviewableLinks = (document) => document.links.some((link) => isImageLink(link) || isPdfLink(link))
+
+  const getPreviewLinks = (document, predicate) => (
+    document.links
+      .map((link, linkIndex) => ({ link, linkIndex }))
+      .filter(({ link }) => predicate(link))
+  )
+
   const isUploadedDocument = (link) => Boolean(link.publicId) && !isImageLink(link)
 
   const getResourceLabel = (link) => (
@@ -104,7 +118,6 @@ const Resources = () => {
     try {
       const response = await authenticatedFetch(`${apiUrl}/api/documents`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         body,
       })
       const data = await response.json()
@@ -137,7 +150,6 @@ const Resources = () => {
     try {
       const response = await authenticatedFetch(`${apiUrl}/api/documents/${documentId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       })
       const data = await response.json()
       if (response.status === 401) {
@@ -247,13 +259,13 @@ const Resources = () => {
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   {document.links.length > 0 && (
-                    isImageLink(getDefaultLink(document).link) ? (
+                    hasPreviewableLinks(document) ? (
                       <button
                         className="rounded-lg bg-sky-700 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-800"
                         type="button"
                         onClick={() => setSelectedDocument(document)}
                       >
-                        Open images
+                        Preview resources
                       </button>
                     ) : (
                       <a
@@ -281,36 +293,50 @@ const Resources = () => {
             <h2 className="font-bold text-slate-800">Add {tabs.find((tab) => tab.id === activeTab).label}</h2>
             <input className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-100" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Document title (e.g. Unit 1)" required />
             <input className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-100" type="url" value={form.link} onChange={(event) => setForm({ ...form, link: event.target.value })} placeholder="External link (optional)" />
-            <input
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-sm"
-              type="file"
-              accept=".pdf,.ppt,.pptx,.doc,.docx,image/*"
-              multiple
-              onChange={(event) => {
-                const selectedFiles = Array.from(event.target.files || [])
-                const documentFiles = selectedFiles.filter((selectedFile) => !selectedFile.type.startsWith('image/'))
-                if (documentFiles.length > 1) {
-                  setMessage('Select only one PDF or document file. Multiple images are supported.')
+            <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-sky-300 bg-white px-4 py-5 text-center transition hover:border-sky-500 hover:bg-sky-50">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-sky-100 text-2xl font-light leading-none text-sky-700" aria-hidden="true">+</span>
+              <span className="mt-2 text-sm font-semibold text-sky-800">Add images or files</span>
+              <span className="mt-1 text-xs text-slate-500">You can select multiple PDFs, documents, and images</span>
+              <input
+                className="sr-only"
+                type="file"
+                accept=".pdf,.ppt,.pptx,.doc,.docx,.txt,image/*"
+                multiple
+                onChange={(event) => {
+                  const selectedFiles = Array.from(event.target.files || [])
+                  setMessage('')
+                  setFiles((currentFiles) => {
+                    const existingKeys = new Set(currentFiles.map((file) => `${file.name}-${file.size}-${file.lastModified}`))
+                    return [
+                      ...currentFiles,
+                      ...selectedFiles.filter((file) => !existingKeys.has(`${file.name}-${file.size}-${file.lastModified}`)),
+                    ]
+                  })
                   event.target.value = ''
-                  setFiles([])
-                  return
-                }
-                setMessage('')
-                setFiles(selectedFiles)
-              }}
-            />
+                }}
+              />
+            </label>
             {files.length > 0 && (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {files.map((selectedFile, fileIndex) => (
-                  <div className="overflow-hidden rounded-lg border border-slate-200 bg-white" key={`${selectedFile.name}-${selectedFile.lastModified}`}>
+                  <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-white" key={`${selectedFile.name}-${selectedFile.lastModified}`}>
                     {selectedFile.type.startsWith('image/') ? (
-                      <img className="h-24 w-full object-cover" src={filePreviews[fileIndex]} alt={selectedFile.name} />
+                      <img className="h-32 w-full object-cover" src={filePreviews[fileIndex]} alt={selectedFile.name} />
+                    ) : selectedFile.type === 'application/pdf' ? (
+                      <iframe className="h-32 w-full bg-slate-100" src={filePreviews[fileIndex]} title={`Preview of ${selectedFile.name}`} />
                     ) : (
-                      <div className="flex h-24 items-center justify-center px-2 text-center text-xs font-medium text-slate-600">{selectedFile.name}</div>
+                      <div className="flex h-32 items-center justify-center bg-slate-100 px-4 text-center text-xs font-medium text-slate-600">{selectedFile.name}</div>
                     )}
-                    {!selectedFile.type.startsWith('image/') && (
-                      <p className="truncate px-2 py-2 text-center text-xs font-semibold text-slate-600">{selectedFile.name}</p>
-                    )}
+                    <div className="flex items-center justify-between gap-2 px-3 py-2">
+                      <p className="truncate text-xs font-semibold text-slate-600">{selectedFile.name}</p>
+                      <button
+                        className="shrink-0 rounded px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                        type="button"
+                        onClick={() => setFiles((currentFiles) => currentFiles.filter((_, index) => index !== fileIndex))}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -320,16 +346,37 @@ const Resources = () => {
         )}
       </div>
       {selectedDocument && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-label={`${selectedDocument.title} images`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-label={`${selectedDocument.title} preview`}>
           <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-white p-4 sm:p-6">
             <div className="mb-4 flex items-center justify-between gap-4">
               <h2 className="text-lg font-bold">{selectedDocument.title}</h2>
               <button className="rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100" type="button" onClick={() => setSelectedDocument(null)}>Close</button>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {selectedDocument.links.map((link, linkIndex) => isImageLink(link) && (
-                <img className="max-h-[70vh] w-full rounded-lg border border-slate-200 object-contain" key={`${link.url}-${linkIndex}`} src={getLinkUrl(selectedDocument, link, linkIndex)} alt={link.label || selectedDocument.title} />
-              ))}
+            <div className="space-y-6">
+              {selectedDocument.links.some(isImageLink) && (
+                <section>
+                  <h3 className="mb-2 text-sm font-semibold text-slate-700">Images</h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {getPreviewLinks(selectedDocument, isImageLink).map(({ link, linkIndex }) => (
+                      <img className="max-h-[70vh] w-full rounded-lg border border-slate-200 object-contain" key={`${link.url}-${linkIndex}`} src={getLinkUrl(selectedDocument, link, linkIndex)} alt={link.label || selectedDocument.title} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {selectedDocument.links.some(isPdfLink) && (
+                <section>
+                  <h3 className="mb-2 text-sm font-semibold text-slate-700">PDFs & Documents</h3>
+                  <div className="space-y-4">
+                    {getPreviewLinks(selectedDocument, isPdfLink).map(({ link, linkIndex }) => (
+                      <div className="overflow-hidden rounded-lg border border-slate-200" key={`pdf-${link.url}-${linkIndex}`}>
+                        <p className="truncate bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">{link.label || 'PDF document'}</p>
+                        <iframe className="h-[60vh] w-full" src={getLinkUrl(selectedDocument, link, linkIndex)} title={link.label || `${selectedDocument.title} PDF`} />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           </div>
         </div>

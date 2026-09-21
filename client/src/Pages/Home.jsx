@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { showError, showPermissionError } from '../utils/notifications'
-import { authenticatedFetch, clearAuthentication } from '../utils/auth'
+import { authenticatedFetch, clearAuthentication, getStoredUser } from '../utils/auth'
 
 const semesters = [1, 2, 3, 4, 5, 6, 7]
 const accents = ['bg-amber-500', 'bg-sky-500', 'bg-emerald-500', 'bg-violet-500', 'bg-rose-500', 'bg-cyan-500']
@@ -17,7 +17,7 @@ const Home = () => {
   const [isAdding, setIsAdding] = useState(false)
   const navigate = useNavigate()
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-  const user = JSON.parse(localStorage.getItem('user') || 'null')
+  const user = getStoredUser()
   const canManageSubjects = user?.role === 'teacher' || user?.role === 'HOD'
 
   const loadSubjects = async () => {
@@ -54,10 +54,7 @@ const Home = () => {
     try {
       const response = await authenticatedFetch(`${apiUrl}/api/subjects`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token') || ''}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newSubject.trim(), semester: activeSemester }),
       })
       const data = await response.json()
@@ -88,7 +85,6 @@ const Home = () => {
     try {
       const response = await authenticatedFetch(`${apiUrl}/api/subjects/${subjectId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
       })
       const data = await response.json()
       if (response.status === 401) {

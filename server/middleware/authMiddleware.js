@@ -2,12 +2,10 @@ const jwt = require('jsonwebtoken')
 const mongoose = require('mongoose')
 const User = require('../model/user')
 const sendAuthenticationError = require('./authError')
+const { AUTH_COOKIE } = require('../utils/authCookies')
 
 const requireAuth = async (req, res, next) => {
-  const authorization = req.get('authorization')
-  const token = authorization && authorization.startsWith('Bearer ')
-    ? authorization.slice(7)
-    : null
+  const token = req.cookies?.[AUTH_COOKIE]
 
   if (!token) {
     return sendAuthenticationError(res, 'Authentication token is required', 'AUTH_TOKEN_REQUIRED')

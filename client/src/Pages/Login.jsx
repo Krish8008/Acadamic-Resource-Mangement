@@ -27,6 +27,7 @@ const Login = () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(form),
         },
       )
@@ -36,8 +37,6 @@ const Login = () => {
         throw new Error(data.message || 'Unable to sign in')
       }
 
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('user', JSON.stringify(data.user))
       toast.success(data.message || 'Login successful')
       setForm({ username: '', password: '' })
       if (data.user.role === 'HOD') {

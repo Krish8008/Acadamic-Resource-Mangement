@@ -34,15 +34,8 @@ const createDocument = async (req, res) => {
     publicId: file.filename,
     resourceType: file.resource_type || (file.mimetype.startsWith('image/') ? 'image' : 'raw'),
   }))
-  const uploadedDocuments = uploadedLinks.filter((link) => link.resourceType !== 'image')
-  if (uploadedDocuments.length > 1) {
-    return res.status(400).json({ message: 'Only one PDF or document file can be uploaded for the same document title' })
-  }
 
   const existingDocument = await Document.findOne({ subject, name, title })
-  if (existingDocument && uploadedDocuments.length > 0 && existingDocument.links.some((link) => link.resourceType !== 'image' && link.publicId)) {
-    return res.status(400).json({ message: 'Only one PDF or document file can be uploaded for the same document title' })
-  }
 
   if (existingDocument) {
     existingDocument.links.push(...normalizedLinks, ...uploadedLinks)
