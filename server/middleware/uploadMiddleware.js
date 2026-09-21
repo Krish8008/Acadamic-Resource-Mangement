@@ -29,14 +29,21 @@ const fileFilter = (req, file, callback) => {
   ])
 
   if (!allowedTypes.has(file.mimetype) && !file.mimetype.startsWith('image/')) {
-    return callback(new Error('Only PDF, PowerPoint, Word, text, and image files are allowed'))
+    const error = new Error('Only PDF, PowerPoint, Word, text, and image files are allowed')
+    error.status = 400
+    return callback(error)
   }
 
   return callback(null, true)
 }
 
+const configuredFileSize = Number(process.env.MAX_UPLOAD_SIZE)
+const maxFileSize = Number.isSafeInteger(configuredFileSize) && configuredFileSize > 0
+  ? configuredFileSize
+  : 10 * 1024 * 1024
+
 module.exports = multer({
   storage,
   fileFilter,
-  limits: { fileSize: Number(process.env.MAX_UPLOAD_SIZE || 10 * 1024 * 1024) },
+  limits: { fileSize: maxFileSize },
 })

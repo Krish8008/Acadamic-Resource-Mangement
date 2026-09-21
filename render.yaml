@@ -1,9 +1,35 @@
 services:
   - type: web
+    name: academic-resource-mangement-server
+    runtime: node
+    plan: free
+    buildCommand: cd server && npm ci
+    startCommand: cd server && npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://acadamic-resource-mangement.onrender.com
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+  - type: web
     name: acadamic-resource-mangement
     runtime: static
     buildCommand: cd client && npm ci && npm run build
     staticPublishPath: client/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://academic-resource-mangement-server.onrender.com
     routes:
       - type: rewrite
         source: /*

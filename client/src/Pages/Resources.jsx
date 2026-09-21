@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import AuthActions from '../components/AuthActions'
 import { toast } from 'sonner'
@@ -37,7 +37,7 @@ const Resources = () => {
     return () => filePreviews.forEach((preview) => preview && URL.revokeObjectURL(preview))
   }, [filePreviews])
 
-  const loadResources = async () => {
+  const loadResources = useCallback(async () => {
     const [subjectResponse, documentsResponse] = await Promise.all([
       fetch(`${apiUrl}/api/subjects/${subjectId}`),
       fetch(`${apiUrl}/api/documents`),
@@ -48,7 +48,7 @@ const Resources = () => {
     if (!documentsResponse.ok) throw new Error(documentsData.message || 'Unable to load documents')
     setSubject(subjectData.subject)
     setDocuments(documentsData.documents.filter((document) => document.subject?._id === subjectId))
-  }
+  }, [apiUrl, subjectId])
 
   useEffect(() => {
     loadResources()
@@ -57,7 +57,7 @@ const Resources = () => {
         setMessage(error instanceof Error ? error.message : 'Unable to load resources')
       })
       .finally(() => setIsLoading(false))
-  }, [subjectId])
+  }, [loadResources])
 
   const currentDocuments = useMemo(
     () => documents.filter((document) => document.name === activeTab),

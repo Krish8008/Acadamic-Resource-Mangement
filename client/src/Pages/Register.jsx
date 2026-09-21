@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import TeacherList from '../components/TeacherList'
 import TeacherRegistrationForm from '../components/TeacherRegistrationForm'
@@ -25,14 +25,14 @@ const Register = () => {
     navigate('/', { replace: true })
   }
 
-  const loadTeachers = async () => {
+  const loadTeachers = useCallback(async () => {
     const response = await authenticatedFetch(`${apiUrl}/api/teachers`, {
     })
     const data = await response.json()
     if (response.status === 401) return
     if (!response.ok) throw new Error(data.message || 'Unable to load teachers')
     setTeachers(data.teachers)
-  }
+  }, [apiUrl])
 
   useEffect(() => {
     try {
@@ -52,7 +52,7 @@ const Register = () => {
       clearAuthentication()
       navigate('/login', { replace: true })
     }
-  }, [navigate])
+  }, [loadTeachers, navigate])
 
   const handleChange = (event) => {
     const { name, value } = event.target

@@ -2,8 +2,19 @@ const Document = require('../model/documents')
 const Subject = require('../model/subject')
 const { removeUploadedLinks } = require('../utils/cloudinary')
 
+const isSafeExternalUrl = (value) => {
+  if (typeof value !== 'string' || !value.trim()) return false
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' || url.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 const createDocument = async (req, res) => {
-  const { title, name, subject, semester, links = '[]', defaultLink = '' } = req.body
+  const { title, name, subject, links = '[]' } = req.body
   const subjectRecord = await Subject.findById(subject)
 
   if (!subjectRecord) {
@@ -25,9 +36,18 @@ const createDocument = async (req, res) => {
     return res.status(400).json({ message: 'links must be an array' })
   }
 
-  const normalizedLinks = externalLinks.map((link) =>
-    typeof link === 'string' ? { url: link } : link,
-  )
+  const normalizedLinks = externalLinks.map((link) => {
+    const item = typeof link === 'string' ? { url: link } : link
+    return {
+      label: typeof item?.label === 'string' ? item.label.trim() : '',
+      url: typeof item?.url === 'string' ? item.url.trim() : '',
+    }
+  })
+
+  if (normalizedLinks.some((link) => !isSafeExternalUrl(link.url))) {
+    return res.status(400).json({ message: 'Every external link must be a valid HTTP or HTTPS URL' })
+  }
+
   const uploadedLinks = (req.files || []).map((file) => ({
     label: file.originalname,
     url: file.path,
@@ -35,7 +55,16 @@ const createDocument = async (req, res) => {
     resourceType: file.resource_type || (file.mimetype.startsWith('image/') ? 'image' : 'raw'),
   }))
 
-  const existingDocument = await Document.findOne({ subject, name, title })
+  const normalizedTitle = typeof title === 'string' ? title.trim() : ''
+  if (!normalizedTitle || !['assignment', 'previous-year-question-paper', 'notes'].includes(name)) {
+    return res.status(400).json({ message: 'A document title and valid resource type are required' })
+  }
+
+  if (normalizedLinks.length + uploadedLinks.length === 0) {
+    return res.status(400).json({ message: 'Add at least one external link or uploaded file' })
+  }
+
+  const existingDocument = await Document.findOne({ subject, name, title: normalizedTitle })
 
   if (existingDocument) {
     existingDocument.links.push(...normalizedLinks, ...uploadedLinks)
@@ -45,13 +74,13 @@ const createDocument = async (req, res) => {
   }
 
   const allLinks = [...normalizedLinks, ...uploadedLinks]
-  const documentDefaultLink = defaultLink || allLinks[0]?.url || ''
+  const documentDefaultLink = allLinks[0]?.url || ''
 
   const document = await Document.create({
-    title,
+    title: normalizedTitle,
     name,
     subject,
-    semester,
+    semester: subjectRecord.semester,
     owner: req.auth.userId,
     links: allLinks,
     defaultLink: documentDefaultLink,

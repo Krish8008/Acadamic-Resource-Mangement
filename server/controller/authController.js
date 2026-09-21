@@ -90,7 +90,7 @@ const login = async (req, res) => {
   }
 
   const userData = publicUser(user)
-  setAuthCookies(res, createToken(user), userData)
+  setAuthCookies(res, createToken(user))
 
   return res.json({ message: 'Login successful', user: userData })
 }

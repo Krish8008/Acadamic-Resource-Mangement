@@ -14,7 +14,13 @@ const getSubject = async (req, res) => {
 }
 
 const createSubject = async (req, res) => {
-  const { name, semester } = req.body
+  const name = typeof req.body.name === 'string' ? req.body.name.trim() : ''
+  const semester = Number(req.body.semester)
+
+  if (!name || !Number.isInteger(semester) || semester < 1 || semester > 7) {
+    return res.status(400).json({ message: 'A subject name and a semester from 1 to 7 are required' })
+  }
+
   const subject = await Subject.create({
     name,
     semester,

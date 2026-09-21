@@ -19,7 +19,7 @@ const TeacherList = ({ teachers, onDelete, isDeleting }) => (
             disabled={isDeleting === teacherId}
             onClick={() => onDelete({ ...teacher, _id: teacherId })}
           >
-            {isDeleting === teacher._id ? 'Deleting...' : 'Delete'}
+            {isDeleting === teacherId ? 'Deleting...' : 'Delete'}
           </button>
         </article>
         )

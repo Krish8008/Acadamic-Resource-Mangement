@@ -1,24 +1,29 @@
 import { toast } from 'sonner'
 
+const USER_STORAGE_KEY = 'auth_user'
+
+export const getApiUrl = () => (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '')
+
+export const storeUser = (user) => {
+  if (user) {
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user))
+  }
+}
+
 export const clearAuthentication = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-  void fetch(`${apiUrl}/api/logout`, {
+  void fetch(`${getApiUrl()}/api/logout`, {
     method: 'POST',
     credentials: 'include',
   })
-  document.cookie = 'auth_user=; Max-Age=0; Path=/'
+  localStorage.removeItem(USER_STORAGE_KEY)
 }
 
 export const getStoredUser = () => {
-  const cookie = document.cookie
-    .split('; ')
-    .find((item) => item.startsWith('auth_user='))
-
-  if (!cookie) return null
-
   try {
-    return JSON.parse(decodeURIComponent(cookie.slice('auth_user='.length)))
+    const user = localStorage.getItem(USER_STORAGE_KEY)
+    return user ? JSON.parse(user) : null
   } catch {
+    localStorage.removeItem(USER_STORAGE_KEY)
     return null
   }
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { showError } from '../utils/notifications'
+import { getApiUrl, storeUser } from '../utils/auth'
 
 const Login = () => {
   const location = useLocation()
@@ -20,10 +21,9 @@ const Login = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setIsSubmitting(true);
-
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/login`,
+        `${getApiUrl()}/api/login`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -33,10 +33,12 @@ const Login = () => {
       )
       const data = await response.json()
 
+
       if (!response.ok) {
         throw new Error(data.message || 'Unable to sign in')
       }
 
+      storeUser(data.user)
       toast.success(data.message || 'Login successful')
       setForm({ username: '', password: '' })
       if (data.user.role === 'HOD') {

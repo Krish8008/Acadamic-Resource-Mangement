@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { showError, showPermissionError } from '../utils/notifications'
@@ -20,12 +20,12 @@ const Home = () => {
   const user = getStoredUser()
   const canManageSubjects = user?.role === 'teacher' || user?.role === 'HOD'
 
-  const loadSubjects = async () => {
+  const loadSubjects = useCallback(async () => {
     const response = await fetch(`${apiUrl}/api/subjects`)
     const data = await response.json()
     if (!response.ok) throw new Error(data.message || 'Unable to load subjects')
     setSubjects(data.subjects)
-  }
+  }, [apiUrl])
 
   useEffect(() => {
     loadSubjects()
@@ -34,7 +34,7 @@ const Home = () => {
         setMessage(error instanceof Error ? error.message : 'Unable to load subjects')
       })
       .finally(() => setIsLoading(false))
-  }, [])
+  }, [loadSubjects])
 
   const filteredSubjects = useMemo(() => {
     const query = search.trim().toLowerCase()
